@@ -19,7 +19,7 @@ parser.add_argument("--train_image_root", default='datasets/train_ori/train_imag
 parser.add_argument("--train_gt_root", default='datasets/train_ori/train_masks/', type=str, help="train root path")
 parser.add_argument("--train_depth_root", default='datasets/train_ori/train_depth/', type=str, help="train root path")
 parser.add_argument("--test_root_path", default='datasets/test/', type=str, help="test root path")
-parser.add_argument("--trainsize")
+parser.add_argument("--trainsize",default=256, type=int)
 parser.add_argument("--cuda", default=True, action="store_true", help="use cuda?")
 parser.add_argument("--frame", default=100, type=int, help="use cuda?")
 parser.add_argument("--start_epoch", default=0, type=int, help="manual epoch number (useful on restarts)")
@@ -48,7 +48,7 @@ def main():
     # cudnn.benchmark = True
 
     print("===> Loading datasets")
-    train_loader = get_loader(opt.train_image_root, opt.train_gt_root, opt.train_depth_root, batchsize=opt.batchsize, trainsize=opt.trainsize)
+    train_loader = get_loader(opt.train_image_root, opt.train_gt_root, opt.train_depth_root, batchsize=opt.batchSize, trainsize=opt.trainsize)
 
     print("===> Building model")
     model = MSSOD()
@@ -85,6 +85,7 @@ def train(optimizer, model, criterion, epoch, train_loader):
             images = images.cuda()
             gts = gts.cuda()
             depths = depths.cuda()
+            depths = torch.cat([depths, depths, depths], dim=1)
         out = model(images, depths)
         loss = criterion(out, gts)
         optimizer.zero_grad()

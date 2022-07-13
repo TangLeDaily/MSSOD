@@ -1,9 +1,10 @@
 import torch
 import torch.nn as nn
-from model_utils import *
+from rootmodel.model_utils import *
 
 class JointAttention(nn.Module):
     def __init__(self, in_channel, ratio=16):
+        super(JointAttention, self).__init__()
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.avg_convFC = nn.Sequential(
             nn.Conv2d(in_channel, in_channel // ratio, 1, padding=0, bias=True),
@@ -23,7 +24,7 @@ class JointAttention(nn.Module):
                                 nn.Conv2d(in_channel // ratio, in_channel, 1, bias=False),
                                 nn.Sigmoid())
 
-    def foward(self, rgb, depth):
+    def forward(self, rgb, depth):
         rgb_fea = self.avg_convFC(self.avg_pool(rgb))
         depth_fea = self.max_convFC(self.max_pool(depth))
         sum_fea = rgb_fea + depth_fea
@@ -36,6 +37,8 @@ class FusionAttention(nn.Module):
     def __init__(self, in_channel = 64):
         super(FusionAttention, self).__init__()
         # temporal attention (before fusion conv)
+        self.max_pool = nn.MaxPool2d(1)
+        self.avg_pool = nn.AvgPool2d(1)
         self.rgb_firstConv = nn.Conv2d(in_channel, in_channel, 3, 1, 1)
         self.depth_firstConv = nn.Conv2d(in_channel, in_channel, 3, 1, 1)
         self.fuse_Conv = nn.Conv2d(in_channel*2, in_channel,3,1,1)
@@ -63,19 +66,19 @@ class FusionAttention(nn.Module):
         fuse_fea = corr * fuse_fea
         fuse_out = self.lrelu(self.fuse_outConv(fuse_fea))
 
-        attn_pre_1 = self.lrelu(self.attn_preConv(fuse_fea))
+        attn_pre_1 = self.lrelu(self.attn_ScaleConv1(fuse_fea))
         attn_max_1 = self.max_pool(attn_pre_1)
         attn_avg_1 = self.avg_pool(attn_pre_1)
         attn_sum_1 = self.lrelu(self.attnConv1(torch.cat((attn_max_1, attn_avg_1), dim=1)))
 
-        attn_pre_2 = self.lrelu(self.attn_ScaleConv2(fuse_fea.view(b, -1, h//2, w//2)))
-        attn_max_2 = self.max_pool(attn_pre_2)
-        attn_avg_2 = self.avg_pool(attn_pre_2)
-        attn_sum_2 = self.lrelu(self.attnConv1(torch.cat((attn_max_2, attn_avg_2), dim=1)))
+        # attn_pre_2 = self.lrelu(self.attn_ScaleConv2(fuse_fea.view(b, -1, h//2, w//2)))
+        # attn_max_2 = self.max_pool(attn_pre_2)
+        # attn_avg_2 = self.avg_pool(attn_pre_2)
+        # attn_sum_2 = self.lrelu(self.attnConv1(torch.cat((attn_max_2, attn_avg_2), dim=1)))
 
         attn_sum_1_out = self.attn_lastConv1(attn_sum_1)
-        attn_sum_2_up = self.attn_lastConv2(self.Up(attn_sum_2))
-        attn = torch.sigmoid(attn_sum_1_out+attn_sum_2_up)
+        # attn_sum_2_up = self.attn_lastConv2(self.Up(attn_sum_2))
+        attn = torch.sigmoid(attn_sum_1_out)
 
         out = fuse_out * attn + fuse_out
         return out
@@ -86,8 +89,11 @@ class PixUpBlock(nn.Module):
         self.up = nn.PixelShuffle(2)
         self.conv = BasicConv2d(in_channel//4, in_channel//4, 3)
         # self.lrelu = nn.LeakyReLU(negative_slope=0.1, inplace=True)
-    def foward(self, x):
-        return self.conv(self.up(x))
+    def forward(self, x):
+        print("pix before:",x.size())
+        out = self.conv(self.up(x))
+        print("pix:",out.size())
+        return out
 
 class MSJCA(nn.Module):
     def __init__(self):
@@ -110,9 +116,9 @@ class MSJCA(nn.Module):
         self.JA4 = JointAttention(in_channel=512, ratio=16)
         self.JA5 = JointAttention(in_channel=512, ratio=16)
 
-    def foward(self, rgb_input, depth_input):
+    def forward(self, rgb_input, depth_input):
         rgb_1 = self.rgb_VGG_con1(rgb_input)
-        depth_1 = self.dep_VGG_con2(depth_input)
+        depth_1 = self.dep_VGG_con1(depth_input)
         rgb_1, depth_1 = self.JA1(rgb_1, depth_1)
 
         rgb_2 = self.rgb_VGG_con2(rgb_1)
@@ -167,7 +173,7 @@ class MSSOD(nn.Module):
             nn.ReLU(inplace=True)
         )
 
-        self.depthpblock2 = nn.Sequential(
+        self.depthUpblock2 = nn.Sequential(
             PixUpBlock(512),
             PixUpBlock(128)
         )
@@ -175,16 +181,17 @@ class MSSOD(nn.Module):
         self.depthUpblock3 = nn.Sequential(
             PixUpBlock(512),
             PixUpBlock(128),
+            PixUpBlock(32),
             nn.Conv2d(8, 32, 3, 1, 1),
             nn.BatchNorm2d(32),
             nn.ReLU(inplace=True)
         )
 
-        self.fattn1 = FusionAttention(64)
+        self.fattn1 = FusionAttention(32)
         self.fattn2 = FusionAttention(32)
         self.fattn3 = FusionAttention(32)
 
-        self.agg_block_1 = PixUpBlock(64)
+        self.agg_block_1 = PixUpBlock(32)
         self.agg_block_2 = PixUpBlock(32)
         self.agg_block_3 = PixUpBlock(32)
 
@@ -200,6 +207,19 @@ class MSSOD(nn.Module):
     def forward(self, low_input, high_input):
         # VGG
         rgb_1, rgb_2, rgb_3, depth_1, depth_2, depth_3 = self.MSJCA(low_input, high_input)
+        print("pre:")
+        print(rgb_1.size())
+        print(rgb_2.size())
+        print(rgb_3.size())
+        print(depth_1.size())
+        print(depth_2.size())
+        print(depth_3.size())
+        # torch.Size([4, 256, 32, 32])
+        # torch.Size([4, 512, 16, 16])
+        # torch.Size([4, 512, 16, 16])
+        # torch.Size([4, 256, 32, 32])
+        # torch.Size([4, 512, 16, 16])
+        # torch.Size([4, 512, 16, 16])
         rgb_1 = self.rgbUpblock1(rgb_1)
         rgb_2 = self.rgbUpblock2(rgb_2)
         rgb_3 = self.rgbUpblock3(rgb_3)
@@ -207,13 +227,31 @@ class MSSOD(nn.Module):
         depth_1 = self.depthUpblock1(depth_1)
         depth_2 = self.depthUpblock2(depth_2)
         depth_3 = self.depthUpblock3(depth_3)
-
+        print("then:")
+        print(rgb_1.size())
+        print(rgb_2.size())
+        print(rgb_3.size())
+        print(depth_1.size())
+        print(depth_2.size())
+        print(depth_3.size())
+        # torch.Size([4, 32, 64, 64])
+        # torch.Size([4, 32, 64, 64])
+        # torch.Size([4, 32, 128, 128])
+        # torch.Size([4, 32, 64, 64])
+        # torch.Size([4, 32, 64, 64])
+        # torch.Size([4, 32, 128, 128])
 
         fa_1 = self.fattn1(rgb_1, depth_1) # 128, 128, 64
         fa_2 = self.fattn2(rgb_2, depth_2) # 128, 128, 32
         fa_3 = self.fattn3(rgb_3, depth_3) # 64, 64 ,32
         # 全部 128， 128 ，32
-
+        print("after")
+        print(fa_1.size())
+        print(fa_2.size())
+        print(fa_3.size())
+        # torch.Size([4, 32, 64, 64])
+        # torch.Size([4, 32, 64, 64])
+        # torch.Size([4, 32, 128, 128])
         fa_1_c = self.agg_block_1(fa_1)
         fa_2_c = self.agg_block_2(fa_2)+fa_1_c
         fa_3_c = self.agg_block_3(fa_3)+fa_2_c
