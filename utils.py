@@ -1,10 +1,12 @@
 import numpy as np
 import torch
 import torch.nn as nn
+import datetime
 
 def log_write(path, str):
+    now = datetime.datetime.now()
     with open(path, 'a') as f:
-        f.write(str+'\n')
+        f.write(str+' TIME： '+now.strftime("%Y-%m-%d %H:%M:%S")+'\n')
 
 class AverageMeter(object):
     def __init__(self):

@@ -1,6 +1,6 @@
 use_wandb = True
 Project_name = "MSSOD_V1"
-This_name = "MSSOD_V1_base"
+This_name = "MSSOD_V1_base_woCA"
 
 test_dataset_name = ['DUT', 'NJUD', 'NLPR']
 # ['DUT', 'NJUD', 'NLPR', 'SSD', 'STEREO', 'LFSD', 'RGBD135']
@@ -12,7 +12,7 @@ import argparse
 import os
 import random
 from data import get_loader, test_dataset
-from rootmodel.MS_base import *
+from rootmodel.MS_base_woCA import *
 from torch import optim
 from utils import *
 
@@ -33,10 +33,9 @@ parser.add_argument("--lr", type=float, default=0.0004, help="Learning Rate. Def
 parser.add_argument("--threads", type=int, default=16, help="number of threads for data loader to use")
 opt = parser.parse_args()
 
-
 def get_yu(model):
     pretrained_dict = torch.load(
-        "/home/tangle/code/MSSOD/checkpoints/MSSOD_V1_base/EP_DUT_MAE_0.1487_Em_0.7431_Sm_0.7608_Fm_0.8047_lr_0.00032.pth",
+        "/home/tangle/code/MSSOD/checkpoints/MSSOD_V1_base/EP_DUT_MAE_0.1426_Em_0.7644_Sm_0.7810_Fm_0.8161_lr_0.00032.pth",
         map_location='cpu')
     pretrained_dict = pretrained_dict['model']
 
@@ -62,7 +61,7 @@ def main():
 
     print("===> Find Cuda")
     cuda = opt.cuda
-    torch.cuda.set_device(2)
+    torch.cuda.set_device(1)
     if cuda and not torch.cuda.is_available():
         raise Exception("No GPU found, please run without --cuda")
     opt.seed = random.randint(1, 10000)
@@ -84,10 +83,12 @@ def main():
         criterion = criterion.cuda()
 
     print("===> Do Resume Or Skip")
-    state_dict = torch.load("/home/tangle/code/MSSOD/checkpoints/MSSOD_V1_base/EP_DUT_MAE_0.1426_Em_0.7644_Sm_0.7810_Fm_0.8161_lr_0.00032.pth",
-                            map_location='cpu')
-    state_dict = state_dict['model']
-    model.load_state_dict(state_dict)
+
+    model = get_yu(model)
+    # state_dict = torch.load("/home/tangle/code/MSSOD/checkpoints/MSSOD_V1_base/EP_DUT_MAE_0.1487_Em_0.7431_Sm_0.7608_Fm_0.8047_lr_0.00032.pth",
+    #                         map_location='cpu')
+    # state_dict = state_dict['model']
+    # model.load_state_dict(state_dict)
 
     # state_dict = torch.load('model_name.pth', map_location='cpu')
     # model.load_state_dict(state_dict['model'])
@@ -101,10 +102,10 @@ def main():
     Now_best_Em = 0
     for epoch in range(opt.start_epoch, opt.nEpochs + 1):
         train(optimizer, model, criterion, epoch, train_loader)
-        if (epoch+1)%10 == 0:
+        if (epoch + 1) % 10 == 0:
             save_mae, save_Em, save_Sm, save_Fm = test(model, epoch, opt.savename)
             save_checkpoint(model, opt.savename, optimizer.param_groups[0]["lr"], save_mae, save_Em, save_Sm, save_Fm)
-        if (epoch+1)%80 == 0:
+        if (epoch + 1) % 80 == 0:
             for p in optimizer.param_groups:
                 p['lr'] *= 0.8
             # Now_best_Em = save_Em
