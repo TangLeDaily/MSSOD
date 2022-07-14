@@ -90,9 +90,9 @@ class PixUpBlock(nn.Module):
         self.conv = BasicConv2d(in_channel//4, in_channel//4, 3)
         # self.lrelu = nn.LeakyReLU(negative_slope=0.1, inplace=True)
     def forward(self, x):
-        print("pix before:",x.size())
+        # print("pix before:",x.size())
         out = self.conv(self.up(x))
-        print("pix:",out.size())
+        # print("pix:",out.size())
         return out
 
 class MSJCA(nn.Module):
@@ -196,24 +196,23 @@ class MSSOD(nn.Module):
         self.agg_block_3 = PixUpBlock(32)
 
         self.lastUp = nn.Sequential(
-            PixUpBlock(32*3),
             PixUpBlock(8*3)
         )
-        self.last_conv = BasicConv2d(32*3, 32*3, 3)
-        self.out_conv = nn.Conv2d(2*3, 1, 3)
+        self.last_conv = BasicConv2d(8*3, 8*3, 3)
+        self.out_conv = nn.Conv2d(2*3, 1, 3, 1, 1)
 
         # self.Decoder = nn.Sequential()
 
     def forward(self, low_input, high_input):
         # VGG
         rgb_1, rgb_2, rgb_3, depth_1, depth_2, depth_3 = self.MSJCA(low_input, high_input)
-        print("pre:")
-        print(rgb_1.size())
-        print(rgb_2.size())
-        print(rgb_3.size())
-        print(depth_1.size())
-        print(depth_2.size())
-        print(depth_3.size())
+        # print("pre:")
+        # print(rgb_1.size())
+        # print(rgb_2.size())
+        # print(rgb_3.size())
+        # print(depth_1.size())
+        # print(depth_2.size())
+        # print(depth_3.size())
         # torch.Size([4, 256, 32, 32])
         # torch.Size([4, 512, 16, 16])
         # torch.Size([4, 512, 16, 16])
@@ -227,13 +226,13 @@ class MSSOD(nn.Module):
         depth_1 = self.depthUpblock1(depth_1)
         depth_2 = self.depthUpblock2(depth_2)
         depth_3 = self.depthUpblock3(depth_3)
-        print("then:")
-        print(rgb_1.size())
-        print(rgb_2.size())
-        print(rgb_3.size())
-        print(depth_1.size())
-        print(depth_2.size())
-        print(depth_3.size())
+        # print("then:")
+        # print(rgb_1.size())
+        # print(rgb_2.size())
+        # print(rgb_3.size())
+        # print(depth_1.size())
+        # print(depth_2.size())
+        # print(depth_3.size())
         # torch.Size([4, 32, 64, 64])
         # torch.Size([4, 32, 64, 64])
         # torch.Size([4, 32, 128, 128])
@@ -245,10 +244,10 @@ class MSSOD(nn.Module):
         fa_2 = self.fattn2(rgb_2, depth_2) # 128, 128, 32
         fa_3 = self.fattn3(rgb_3, depth_3) # 64, 64 ,32
         # 全部 128， 128 ，32
-        print("after")
-        print(fa_1.size())
-        print(fa_2.size())
-        print(fa_3.size())
+        # print("after")
+        # print(fa_1.size())
+        # print(fa_2.size())
+        # print(fa_3.size())
         # torch.Size([4, 32, 64, 64])
         # torch.Size([4, 32, 64, 64])
         # torch.Size([4, 32, 128, 128])
@@ -258,9 +257,12 @@ class MSSOD(nn.Module):
 
 
         sum_c = torch.cat((fa_3_c, fa_2_c, fa_1_c), dim=1) # c=32*3
+        # print("sum_c:", sum_c.size())
         last = self.last_conv(sum_c)
+        # print("last_conv:", last.size())
         last = self.lastUp(last)
+        # print("last_up:", last.size())
         out = self.out_conv(last)
-
+        # print("out:", out.size())
         return out
 
