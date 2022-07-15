@@ -1,5 +1,3 @@
-
-
 import torch
 import torch.nn as nn
 from rootmodel.model_utils import *
@@ -104,13 +102,13 @@ class MSJCA(nn.Module):
         self.rgb_VGG_con2 = VGG_conv2()
         self.rgb_VGG_con3 = VGG_conv3()
         self.rgb_VGG_con4 = VGG_conv4()
-        self.rgb_VGG_con5 = VGG_conv5_Nopool()
+        self.rgb_VGG_con5 = VGG_conv5()
 
         self.dep_VGG_con1 = VGG_conv1()
         self.dep_VGG_con2 = VGG_conv2()
         self.dep_VGG_con3 = VGG_conv3()
         self.dep_VGG_con4 = VGG_conv4()
-        self.dep_VGG_con5 = VGG_conv5_Nopool()
+        self.dep_VGG_con5 = VGG_conv5()
 
         # self.JA1 = JointAttention(in_channel=64, ratio=16)
         # self.JA2 = JointAttention(in_channel=128, ratio=16)
@@ -163,6 +161,10 @@ class MSSOD(nn.Module):
         self.rgbUpblock3 = nn.Sequential(
             PixUpBlock(512),
             PixUpBlock(128),
+            PixUpBlock(32),
+            nn.Conv2d(8, 32, 3, 1, 1),
+            nn.BatchNorm2d(32),
+            nn.ReLU(inplace=True)
         )
         self.depthUpblock1 = nn.Sequential(
             PixUpBlock(256),
@@ -179,6 +181,10 @@ class MSSOD(nn.Module):
         self.depthUpblock3 = nn.Sequential(
             PixUpBlock(512),
             PixUpBlock(128),
+            PixUpBlock(32),
+            nn.Conv2d(8, 32, 3, 1, 1),
+            nn.BatchNorm2d(32),
+            nn.ReLU(inplace=True)
         )
 
         self.fattn1 = FusionAttention(32)
@@ -207,14 +213,12 @@ class MSSOD(nn.Module):
         # print(depth_1.size())
         # print(depth_2.size())
         # print(depth_3.size())
-
-        # torch.Size([4, 256, 64, 64])
-        # torch.Size([4, 512, 32, 32])
-        # torch.Size([4, 512, 32, 32])
-        # torch.Size([4, 256, 64, 64])
-        # torch.Size([4, 512, 32, 32])
-        # torch.Size([4, 512, 32, 32])
-
+        # torch.Size([4, 256, 32, 32])
+        # torch.Size([4, 512, 16, 16])
+        # torch.Size([4, 512, 16, 16])
+        # torch.Size([4, 256, 32, 32])
+        # torch.Size([4, 512, 16, 16])
+        # torch.Size([4, 512, 16, 16])
         rgb_1 = self.rgbUpblock1(rgb_1)
         rgb_2 = self.rgbUpblock2(rgb_2)
         rgb_3 = self.rgbUpblock3(rgb_3)
@@ -261,4 +265,3 @@ class MSSOD(nn.Module):
         out = self.out_conv(last)
         # print("out:", out.size())
         return out
-
