@@ -1,10 +1,13 @@
 import torch
 import numpy
+from rootmodel.model_utils import *
+from rootmodel.MS_base_CenterConbine import *
 
-a = torch.rand(4,4,64)
-b = torch.rand(4,4,64)
+a = torch.rand(4,3,512,512)
+b = torch.rand(4,3,512,512)
 
 if __name__ == '__main__':
-    #c = torch.matmul(a,b)
-    c =a*b
-    print(c.size())
+    msjca = MSSOD()
+    center, out = msjca(a, b)
+    print(center.size())
+    print(out.size())

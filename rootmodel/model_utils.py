@@ -107,6 +107,30 @@ class VGG_conv5(nn.Module):
         h = self.pool5(h)
         return h
 
+class VGG_conv5_Nopool(nn.Module):
+    def __init__(self):
+        super(VGG_conv5_Nopool, self).__init__()
+        # conv5
+        self.conv5_1 = nn.Conv2d(512, 512, 3, padding=1)
+        self.bn5_1 = nn.BatchNorm2d(512, eps=1e-05, momentum=0.1, affine=True)
+        self.relu5_1 = nn.ReLU(inplace=True)
+        self.conv5_2 = nn.Conv2d(512, 512, 3, padding=1)
+        self.bn5_2 = nn.BatchNorm2d(512, eps=1e-05, momentum=0.1, affine=True)
+        self.relu5_2 = nn.ReLU(inplace=True)
+        self.conv5_3 = nn.Conv2d(512, 512, 3, padding=1)
+        self.bn5_3 = nn.BatchNorm2d(512, eps=1e-05, momentum=0.1, affine=True)
+        self.relu5_3 = nn.ReLU(inplace=True)  # 1/32    4 layers
+        # self.pool5 = nn.MaxPool2d(2, stride=2, ceil_mode=True)  # 1/16      4 layers
+    def forward(self,x):
+        # orin: B, C=512, H=16, W=16
+        # now: B, C=512, H=32, W=32
+        h = x
+        h = self.relu5_1(self.bn5_1(self.conv5_1(h)))
+        h = self.relu5_2(self.bn5_2(self.conv5_2(h)))
+        h = self.relu5_3(self.bn5_3(self.conv5_3(h)))
+        # h = self.pool5(h)
+        return h
+
 class BasicConv2d(nn.Module):
     def __init__(self, in_planes, out_planes, kernel_size, stride=1, padding=1, dilation=1):
         super(BasicConv2d, self).__init__()
