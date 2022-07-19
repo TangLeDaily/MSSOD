@@ -10,6 +10,7 @@ class SubNonLocalAttention(nn.Module):
         super(SubNonLocalAttention, self).__init__()
         self.x_conv = BasicConv2d(y_channel, y_channel, 3)
         self.y_conv = BasicConv2d(y_channel, y_channel, 3)
+        self.yy_conv = BasicConv2d(y_channel, y_channel, 3)
         self.split_dim1 = split_dim1
         self.split_dim2 = split_dim2
         self.split_num1 = split_num1
@@ -17,6 +18,7 @@ class SubNonLocalAttention(nn.Module):
         self.sum_num = sum_num
         self.Ln = nn.Linear(y_channel * 2, 1)
         self.out_conv = BasicConv2d(y_channel, y_channel, 3)
+        self.lrelu = nn.LeakyReLU(negative_slope=0.1, inplace=True)
 
     def mu(self, x, y):
         C, H, W = x.size()
@@ -25,6 +27,7 @@ class SubNonLocalAttention(nn.Module):
         b = y.contiguous().view(C, H * W)
         c = a.clone()
         d = torch.matmul(a, b)
+        d = torch.softmax(d,dim=1)
         d = torch.matmul(d, c)
         d = d.permute(1, 0).view(C, H, W)
         return d
@@ -44,7 +47,7 @@ class SubNonLocalAttention(nn.Module):
             sp_W_y = sp_H_y[i].split(W // self.split_num2, dim=self.split_dim2)
             sp_HW_y.append(sp_W_y)
         sp_OutHW_x = []
-
+        y = self.yy_conv(self.lrelu(y))
         for i in range(self.split_num1):
             sp_temp = []
             for j in range(self.split_num2):
@@ -63,17 +66,23 @@ class SubNonLocalAttention(nn.Module):
                 sum = avgpool(afterLn) + maxpool(afterLn)  # B, 1, num1, num2
                 sum_v = sum.view(B, 1, -1)
                 Bx_temp = []
+                m_x_Nok = sp_HW_x[i][j]
                 for k in range(B):
                     B1_sum_v = sum_v[k, :, :]
                     _, indices = B1_sum_v.topk(self.sum_num, dim=1, largest=True)
                     x_temp = torch.zeros(1, C, H // self.split_num1, W // self.split_num2)
-                    m_x = sp_HW_x[i][j]
-                    m_x = m_x[k, :, :, :]
+                    m_x = m_x_Nok[k, :, :, :]
+                    m_y_NoK = None
                     for l in indices[0, :]:
-                        keyx = l // (self.split_num2)
-                        keyy = l % (self.split_num2)
-                        m_y = sp_HW_y[keyx][keyy]
-                        m_y = m_y[k, :, :, :]
+                        keyx = (l // (self.split_num2)).detach()
+                        keyy = (l % (self.split_num2)).detach()
+                        print(keyx)
+                        print(keyy)
+                        print(sp_HW_y[keyx][keyy].size())
+                        spHWy = sp_HW_y[keyx]
+                        m_y_NoK = spHWy[keyy]
+                        # m_y_NoK = spHWy[l // (self.split_num2)][l % (self.split_num2)].clone().detach()
+                        m_y = m_y_NoK[k, :, :, :]
                         x_x = self.mu(m_x, m_y)
                         x_temp = x_temp + x_x
                     Bx_temp.append(x_temp)
@@ -82,7 +91,7 @@ class SubNonLocalAttention(nn.Module):
             sp_OutW_x = torch.cat(sp_temp, dim=self.split_dim2)
             sp_OutHW_x.append(sp_OutW_x)
         out = torch.cat(sp_OutHW_x, dim=self.split_dim1)
-        print(out.size())
+        # print(out.size())
         out = self.out_conv(out)
 
         return out

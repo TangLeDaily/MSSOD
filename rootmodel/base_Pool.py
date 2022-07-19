@@ -110,32 +110,32 @@ class MSJCA(nn.Module):
         self.dep_VGG_con4 = VGG_conv4()
         self.dep_VGG_con5 = VGG_conv5()
 
-        # self.JA1 = JointAttention(in_channel=64, ratio=16)
-        # self.JA2 = JointAttention(in_channel=128, ratio=16)
-        # self.JA3 = JointAttention(in_channel=256, ratio=16)
-        # self.JA4 = JointAttention(in_channel=512, ratio=16)
-        # self.JA5 = JointAttention(in_channel=512, ratio=16)
+        self.JA1 = JointAttention(in_channel=64, ratio=16)
+        self.JA2 = JointAttention(in_channel=128, ratio=16)
+        self.JA3 = JointAttention(in_channel=256, ratio=16)
+        self.JA4 = JointAttention(in_channel=512, ratio=16)
+        self.JA5 = JointAttention(in_channel=512, ratio=16)
 
     def forward(self, rgb_input, depth_input):
         rgb_1 = self.rgb_VGG_con1(rgb_input)
         depth_1 = self.dep_VGG_con1(depth_input)
-        # rgb_1, depth_1 = self.JA1(rgb_1, depth_1)
+        rgb_1, depth_1 = self.JA1(rgb_1, depth_1)
 
         rgb_2 = self.rgb_VGG_con2(rgb_1)
         depth_2 = self.dep_VGG_con2(depth_1)
-        # rgb_2, depth_2 = self.JA2(rgb_2, depth_2)
+        rgb_2, depth_2 = self.JA2(rgb_2, depth_2)
 
         rgb_3 = self.rgb_VGG_con3(rgb_2)
         depth_3 = self.dep_VGG_con3(depth_2)
-        # rgb_3, depth_3 = self.JA3(rgb_3, depth_3)
+        rgb_3, depth_3 = self.JA3(rgb_3, depth_3)
 
         rgb_4 = self.rgb_VGG_con4(rgb_3)
         depth_4 = self.dep_VGG_con4(depth_3)
-        # rgb_4, depth_4 = self.JA4(rgb_4, depth_4)
+        rgb_4, depth_4 = self.JA4(rgb_4, depth_4)
 
         rgb_5 = self.rgb_VGG_con5(rgb_4)
         depth_5 = self.dep_VGG_con5(depth_4)
-        # rgb_5, depth_5 = self.JA5(rgb_5, depth_5)
+        rgb_5, depth_5 = self.JA5(rgb_5, depth_5)
 
         ## remember 3,4,5
         return rgb_3, rgb_4, rgb_5, depth_3, depth_4, depth_5
@@ -265,3 +265,4 @@ class MSSOD(nn.Module):
         out = self.out_conv(last)
         # print("out:", out.size())
         return out
+

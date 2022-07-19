@@ -1,6 +1,6 @@
 use_wandb = True
 Project_name = "MSSOD_V1"
-This_name = "MSSOD_V1_base"
+This_name = "Base_Pool_Center_GNL"
 
 test_dataset_name = ['DUT', 'NJUD', 'NLPR']
 # ['DUT', 'NJUD', 'NLPR', 'SSD', 'STEREO', 'LFSD', 'RGBD135']
@@ -12,7 +12,7 @@ import argparse
 import os
 import random
 from data import get_loader, test_dataset
-from rootmodel.MS_base_CenterConbine import *
+from rootmodel.Base_pool_Center_GNL import *
 from torch import optim
 from utils import *
 
@@ -29,14 +29,14 @@ parser.add_argument("--frame", default=100, type=int, help="use cuda?")
 parser.add_argument("--start_epoch", default=0, type=int, help="manual epoch number (useful on restarts)")
 parser.add_argument("--batchSize", type=int, default=8, help="training batch size")  # default 16
 parser.add_argument("--nEpochs", type=int, default=10000, help="number of epochs to train for")
-parser.add_argument("--lr", type=float, default=0.0004, help="Learning Rate. Default=1e-4")
+parser.add_argument("--lr", type=float, default=0.0002, help="Learning Rate. Default=1e-4")
 parser.add_argument("--threads", type=int, default=16, help="number of threads for data loader to use")
 opt = parser.parse_args()
 
 
 def get_yu(model):
     pretrained_dict = torch.load(
-        "/home/tangle/code/MSSOD/checkpoints/MSSOD_V1_base/EP_DUT_MAE_0.1487_Em_0.7431_Sm_0.7608_Fm_0.8047_lr_0.00032.pth",
+        "/home/tangle/code/MSSOD/checkpoints/MSSOD_base_nopool_Center/EP_DUT_Em_0.8884_Sm_0.8664_Fm_0.8878_MAE_0.0620_lr_0.00013107200000000006.pth",
         map_location='cpu')
     pretrained_dict = pretrained_dict['model']
 
