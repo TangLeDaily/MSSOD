@@ -6,13 +6,13 @@ from rootmodel import MS_base_CenterConbine
 from rootmodel import MS_base
 from rootmodel import Base_pool_Center
 from rootmodel import MS_base_woCA
-from rootmodel import Base_pool_Center_RFB
+from rootmodel import ResNet34_NewJA_NewDecoder
 from rootmodel import *
 from rootmodel.model_utils import *
 import thop
 
-a = torch.rand(4,3,512,512)
-b = torch.rand(4,3,512,512)
+a = torch.rand(4,3,256,256)
+b = torch.rand(4,3,256,256)
 
 if __name__ == '__main__':
     with torch.no_grad():
@@ -20,7 +20,7 @@ if __name__ == '__main__':
         woca_model = MS_base_woCA.MSSOD()
         center_model = MS_base_CenterConbine.MSSOD()
         BPC = Base_pool_Center.MSSOD()
-        GNL = rootmodel.Base_pool_Center_GNL.MSSOD()
+        GNL = ResNet34_NewJA_NewDecoder.MSSOD()
         # BPC_0RFB = Base_pool_Center_RFB.MSSOD()
         # center, out = msjca(a, b)
         # print(center.size())
