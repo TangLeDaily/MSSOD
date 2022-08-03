@@ -6,7 +6,7 @@ from rootmodel import MS_base_CenterConbine
 from rootmodel import MS_base
 from rootmodel import Base_pool_Center
 from rootmodel import MS_base_woCA
-from rootmodel import ResNet34_NewJA_NewDecoder
+from rootmodel import ResNet34_NewUp
 from rootmodel import *
 from rootmodel.model_utils import *
 import thop
@@ -20,8 +20,7 @@ if __name__ == '__main__':
         woca_model = MS_base_woCA.MSSOD()
         center_model = MS_base_CenterConbine.MSSOD()
         BPC = Base_pool_Center.MSSOD()
-        GNL = ResNet34_NewJA_NewDecoder.MSSOD()
-        # BPC_0RFB = Base_pool_Center_RFB.MSSOD()
+        GNL = ResNet34_NewUp.MSSOD()
         # center, out = msjca(a, b)
         # print(center.size())
         # print(out.size())

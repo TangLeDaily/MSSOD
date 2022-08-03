@@ -151,3 +151,42 @@ class JointAttention(nn.Module):
         depth_out = depth * emb_rgb + res_depth
 
         return rgb_out, depth_out
+
+# Time: 2022/7/25
+class DCNJointAttention(nn.Module):
+    def __init__(self, in_channel, ratio=16):
+        super(DCNJointAttention, self).__init__()
+        self.dcn_rgb1 = DCNv2Pack(
+                in_channel,
+                in_channel,
+                3,
+                stride=1,
+                padding=1,
+                deformable_groups=8)
+        self.dcn_depth1 = DCNv2Pack(
+                in_channel,
+                in_channel,
+                3,
+                stride=1,
+                padding=1,
+                deformable_groups=8)
+        self.offset_conv1 = nn.Sequential(
+            nn.Conv2d(in_channel*2, in_channel, 3, 1, 1),
+            nn.LeakyReLU(negative_slope=0.1, inplace=True),
+            nn.Conv2d(in_channel, in_channel, 3, 1, 1),
+            nn.LeakyReLU(negative_slope=0.1, inplace=True)
+        )
+        self.offset_conv2 = nn.Sequential(
+            nn.Conv2d(in_channel * 2, in_channel, 3, 1, 1),
+            nn.LeakyReLU(negative_slope=0.1, inplace=True),
+            nn.Conv2d(in_channel, in_channel, 3, 1, 1),
+            nn.LeakyReLU(negative_slope=0.1, inplace=True)
+        )
+        self.lrelu = nn.LeakyReLU(negative_slope=0.1, inplace=True)
+    def forward(self, rgb, depth):
+        offset_rgb1 = self.offset_conv1(torch.cat((rgb, depth), dim=1))
+        offset_depth1 = self.offset_conv2(torch.cat((rgb, depth), dim=1))
+        rgb1 = self.lrelu(self.dcn_rgb1(rgb, offset_rgb1))
+        depth1 = self.lrelu(self.dcn_depth1(depth, offset_depth1))
+
+        return rgb1, depth1
